@@ -1,14 +1,51 @@
 // ==UserScript==
 // @name         Pinboard fixes: search pager + sidebar tag autocomplete
 // @namespace    pinboard-fixes
-// @version      2.0.0
-// @description  Two fixes for pinboard.in. (1) Search pager: Pinboard shows 20 hits per search page but its "« earlier" link jumps ahead 60, hiding hits 21–60 of every 60; this rewrites earlier/later to step by one page, adds numbered page links, and stops at the backend's 1,000-hit ceiling instead of linking to an error page. (2) Sidebar autocomplete: Pinboard wires tag autocomplete to its banner search box by element id, but that box is hidden on screens wider than 640px and the sidebar search box reuses the same id, so on desktop the visible box never gets autocomplete; this attaches Pinboard's own autocomplete to every search box that is missing it.
+// @version      2.1.0
+// @description  Three fixes for pinboard.in. (1) Search pager: Pinboard shows 20 hits per search page but its "« earlier" link jumps ahead 60, hiding hits 21–60 of every 60; this rewrites earlier/later to step by one page, adds numbered page links, and stops at the backend's 1,000-hit ceiling instead of linking to an error page. (2) Sidebar autocomplete: Pinboard wires tag autocomplete to its banner search box by element id, but that box is hidden on screens wider than 640px and the sidebar search box reuses the same id, so on desktop the visible box never gets autocomplete; this attaches Pinboard's own autocomplete to every search box that is missing it. (3) Dark-mode link colours: Pinboard's dark-mode stylesheet turns every link inside a private bookmark red; this restores the normal light-mode link colours (title, URL line, tags, edit/delete), keeping unread titles red.
 // @author       Jimmy
 // @match        https://pinboard.in/*
 // @run-at       document-end
 // @grant        none
 // @noframes
 // ==/UserScript==
+
+/* ------------------------------------------------------------------ */
+/* Fix 3: private-bookmark link colours in dark mode (every page)      */
+/* Placed first so it applies as early as the script runs.             */
+/* ------------------------------------------------------------------ */
+(function () {
+  'use strict';
+
+  // Pinboard loads new_main.css last, and inside @media (prefers-color-scheme: dark) it has
+  // `.private a { color: red }`, which outranks every per-class link colour. Below are Pinboard's own
+  // light-mode link rules (basic.css, then new_main.css, in their original order), each prefixed with
+  // `html .private` so they win on specificity without !important.
+  var rules = [
+    ['a', '#11a'],                                        // default link (titles)
+    ['a:visited', '#51a'],
+    ['a.delete, a.delete:visited, a.edit', '#aaa'],       // edit / delete
+    ['a.delete:hover, a.edit:hover', '#44d'],
+    ['a.edit:visited', '#ccc'],
+    ['a.destroy, a.destroy:visited', 'red'],              // delete confirmation
+    ['a.copy_link', '#bbb'],
+    ['a.copy_link:hover, a.url_display:hover', '#44d'],
+    ['a.source', '#77c'],
+    ['a.tag', '#a51'],                                    // tags
+    ['.when', '#777'],                                    // timestamp
+    ['a.fetch_err', 'red'],
+    ['.cached, .cached:visited', '#aaa'],
+    ['.url_link, a.url_display', '#888'],                 // URL line
+    ['a.unread', '#b41'],                                 // unread titles stay red
+    ['a.has_bmark', '#aaa']
+  ];
+
+  var css = document.createElement('style');
+  css.textContent = '@media (prefers-color-scheme: dark){' + rules.map(function (r) {
+    return r[0].split(', ').map(function (s) { return 'html .private ' + s; }).join(',') + '{color:' + r[1] + '}';
+  }).join('') + '}';
+  document.head.appendChild(css);
+})();
 
 /* ------------------------------------------------------------------ */
 /* Fix 1: search results pager (search pages only)                     */

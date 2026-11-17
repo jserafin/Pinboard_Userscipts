@@ -1,11 +1,12 @@
 # Pinboard Userscripts
 
-A single userscript that fixes two long-standing annoyances on [pinboard.in](https://pinboard.in):
+A single userscript that fixes three long-standing annoyances on [pinboard.in](https://pinboard.in):
 
 1. **Search pager** — the "« earlier" link on search results skips two thirds of the hits.
 2. **Sidebar tag autocomplete** — the search box you can actually see on desktop has no tag autocomplete.
+3. **Dark-mode link colours** — every link inside a private bookmark turns red when the browser is in dark mode.
 
-Both fixes live in [`pinboard_userscripts.user.js`](pinboard_userscripts.user.js) and run on every `https://pinboard.in/*` page.
+All three fixes live in [`pinboard_userscripts.user.js`](pinboard_userscripts.user.js) and run on every `https://pinboard.in/*` page.
 
 ## Install
 
@@ -34,6 +35,23 @@ If Pinboard ever honours the per-page setting on search pages, the script follow
 **The problem.** Pinboard attaches tag autocomplete to the banner search box by element id. That box is hidden on screens wider than 640px, and the always-visible sidebar search box reuses the same id. So on desktop the box you type into never gets autocomplete.
 
 **The fix.** After the page loads and Pinboard's own init has finished, the script finds every search form whose input is named `query` and lacks a `.pin-ac` dropdown, then attaches Pinboard's own `Pin.Tags` widget using the same options Pinboard uses (`circular`, `submit_on_return`). It waits up to about four seconds for `Pin.Tags` and the user's tag list to load, and never double-wires a box that already has autocomplete.
+
+## Fix 3: private bookmark link colours in dark mode
+
+**The problem.** Pinboard loads `new_main.css` last, and inside `@media (prefers-color-scheme: dark)` it contains `.private a { color: red }`. That rule outranks every per-class link colour, so with the browser in dark mode every link inside a private bookmark renders red: title, URL line, tags, timestamp, edit and delete.
+
+**The fix.** The script injects one `<style>` element, scoped to the same dark-mode media query, that re-declares Pinboard's own light-mode link colours for links inside `.private`. The rules are copied from `basic.css` and `new_main.css` in their original order and prefixed with `html .private`, so they win on specificity without `!important`. Light mode is untouched.
+
+| Link | Colour |
+| --- | --- |
+| Title and other plain links | `#11a`, visited `#51a` |
+| URL line | `#888` |
+| Tags | `#a51` |
+| Timestamp | `#777` |
+| Edit, delete, cached | `#aaa` |
+| Unread title | `#b41` |
+
+The script runs at `document-end`, so a brief flash of red is possible while the page loads.
 
 ## Development
 
